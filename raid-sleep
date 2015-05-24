@@ -1,0 +1,159 @@
+#!/usr/bin/env python2
+#
+# Power down RAID disks after a specified timeout.
+#
+# This script can handle drives that don't work with "hdparm -S" because
+# they lack power management features (like the popular WD RED series).
+#
+# Also, all drives are powered up at the same time when an access to
+# one of the drives is detected. This makes wake-up from standby a lot
+# faster for RAID arrays, where the drives would wake up in sequence
+# with normal "hdparm" power-down.
+#
+# 2015-05-20, tk:  v1.0.0, Initial implementation.
+#
+# Copyright (C)2015 Thomas Kindler <mail_git@t-kindler.de>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+import os, sys, argparse, time
+from subprocess import Popen, PIPE
+
+
+def parse_args():
+    global args
+
+    parser = argparse.ArgumentParser(
+        description = "Power down RAID disks after a specified timeout"
+    )
+
+    parser.add_argument(
+        "--version", action = "version",
+        version = "%(prog)s 1.0.0"
+    )
+
+    parser.add_argument(
+        "-q", "--quiet", dest = "verbose",
+        default = True, action = "store_false",
+        help = "do not print status messages",
+    )
+
+    parser.add_argument(
+        "-t", "--timeout", dest = "timeout",
+        default = 1800, type = int,
+        help = "standby timeout in seconds (default: %(default)s)"
+    )
+
+    parser.add_argument(
+        "disk", nargs = "+",
+        help = "Disks to monitor"
+    )
+
+    args = parser.parse_args()
+
+    args.disk_devs = [ os.path.realpath(d) for d in args.disk ]
+
+
+def dprint(*str):
+    if args.verbose:
+        for s in str:
+            print s,
+        print
+
+
+def power_down():
+    # hdparm may take a long time, so execute in parallel
+    #
+    for p in [
+        Popen([ "hdparm", "-y", d ], stdout = PIPE)
+        for d in args.disk_devs
+    ]: p.wait()
+
+
+def wake_up():
+    for p in [
+        Popen([ "hdparm", "--read-sector", "0", d ], stdout = PIPE)
+        for d in args.disk_devs
+    ]: p.wait()
+
+
+def diskstats():
+    # see https://www.kernel.org/doc/Documentation/iostats.txt
+    #
+    columns = [
+        "major_dev_num", "minor_dev_num", "device",
+        "reads", "reads_merged", "sectors_read", "ms_reading",
+        "writes", "writes_merged", "sectors_written", "ms_writing",
+        "current_ios", "ms_doing_io", "weighted_ms_doing_io"
+    ]
+
+    result = {}
+    for line in open("/proc/diskstats"):
+        parts = line.split()
+        if len(parts) != len(columns):
+            continue
+
+        data = dict( zip(columns, parts) )
+
+        result["/dev/" + data["device"]] = {
+            k:int(v) for k, v in data.items() if k != "device"
+        }
+
+    return result
+
+
+def hms(s):
+    return time.strftime("%H:%M:%S", time.gmtime(s))
+
+# ----- ----- ----- ----- -----
+
+old_stats = None
+last_access = time.time()
+last_standby = last_access
+disk_state = 1
+
+parse_args()
+
+dprint(
+    "Monitoring %s. Timeout = %s" % (
+        ", ".join(args.disk_devs), hms(args.timeout)
+    )
+)
+
+while True:
+    stats = diskstats()
+    stats = { k:v for k,v in stats.items() if k in args.disk_devs }
+
+    now = time.time()
+
+    if old_stats and old_stats != stats:
+        if disk_state == 0:
+            disk_state = 1
+            last_standby = now
+
+            dprint("Waking up after %s of sleep" % hms(now - last_access))
+            wake_up()
+
+        last_access = now
+
+    if now - last_access > args.timeout:
+        if disk_state == 1:
+            disk_state = 0
+
+            dprint("Powering down after %s" % hms(now - last_standby))
+            power_down()
+
+    old_stats = stats
+    time.sleep(1)
