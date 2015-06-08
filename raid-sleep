@@ -10,7 +10,8 @@
 # faster for RAID arrays, where the drives would wake up in sequence
 # with normal "hdparm" power-down.
 #
-# 2015-05-20, tk:  v1.0.0, Initial implementation.
+# 2015-06-08, tk: v1.0.1, Correctly show time intervals >24h
+# 2015-05-20, tk: v1.0.0, Initial implementation
 #
 # Copyright (C)2015 Thomas Kindler <mail_git@t-kindler.de>
 #
@@ -41,7 +42,7 @@ def parse_args():
 
     parser.add_argument(
         "--version", action = "version",
-        version = "%(prog)s 1.0.0"
+        version = "%(prog)s 1.0.1"
     )
 
     parser.add_argument(
@@ -115,7 +116,7 @@ def diskstats():
 
 
 def hms(s):
-    return time.strftime("%H:%M:%S", time.gmtime(s))
+    return "%d:%02d:%02d" % (s / 3600, s / 60 % 60, s % 60)
 
 # ----- ----- ----- ----- -----
 
