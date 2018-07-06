@@ -1,11 +1,13 @@
 [Unit]
-Description= Power down RAID disks after a specified timeout
+Description=Power down RAID disks after a specified timeout
 
 [Service]
 EnvironmentFile=/etc/raid-sleep.conf
 Environment=PYTHONUNBUFFERED=1
 
 ExecStart=/usr/local/sbin/raid-sleep --timeout $TIMEOUT $DISKS
+Restart=always
+RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target
