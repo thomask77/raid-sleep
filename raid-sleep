@@ -1,34 +1,5 @@
 #!/usr/bin/env python2
 #
-# Power down RAID disks after a specified timeout.
-#
-# This script can handle drives that don't work with "hdparm -S" because
-# they lack power management features (like the popular WD RED series).
-#
-# Also, all drives are powered up at the same time when an access to
-# one of the drives is detected. This makes wake-up from standby a lot
-# faster for RAID arrays, where the drives would wake up in sequence
-# with normal "hdparm" power-down.
-#
-# 2015-06-08, tk: v1.0.1, Correctly show time intervals >24h
-# 2015-05-20, tk: v1.0.0, Initial implementation
-#
-# Copyright (C)2015 Thomas Kindler <mail_git@t-kindler.de>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-
 import os, sys, argparse, time
 from subprocess import Popen, PIPE
 
