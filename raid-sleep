@@ -87,7 +87,7 @@ def diskstats():
     result = {}
     for line in open("/proc/diskstats"):
         parts = line.split()
-        if len(parts) != len(columns):
+        if len(parts) < len(columns):
             continue
 
         data = dict(list(zip(columns, parts)))
