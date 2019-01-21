@@ -1,10 +1,10 @@
 #!/bin/bash
 set -o nounset -o pipefail -o errexit
 
-cp raid-sleep /usr/local/sbin
-cp raid-sleep.service /etc/systemd/system
+install -m 755 -v raid-sleep /usr/local/sbin
+install -m 644 -v raid-sleep.service /etc/systemd/system
 
-cp --backup --interactive raid-sleep.conf /etc/raid-sleep.conf
+test -f /etc/raid-sleep.conf || install -m 644 -v raid-sleep.conf /etc/raid-sleep.conf
 
 systemctl daemon-reload
 systemctl enable raid-sleep
