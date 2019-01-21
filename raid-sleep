@@ -87,7 +87,7 @@ def diskstats():
     result = {}
     for line in open("/proc/diskstats"):
         parts = line.split()
-        if len(parts) != len(columns):
+        if len(parts) < len(columns):
             continue
 
         data = dict(list(zip(columns, parts)))
@@ -129,7 +129,7 @@ while True:
             disk_state = 1
             last_standby = now
 
-            dprint("Waking up after %s of sleep" % hms(now - last_access))
+            dprint("Waking up after %s of inactivity" % hms(now - last_access))
             wake_up()
 
         last_access = now
